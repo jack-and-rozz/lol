@@ -71,8 +71,6 @@ class ExperimentManager(ManagerBase):
       if not task_name in self.dataset:
         continue
       batch_size = self.config.tasks[task_name].batch_size
-      if mode != 'train':
-        batch_size /= 10 # Calculating losses for all the predictions expands batch size by beam width, which can cause OOM. (TODO: automatically adjust the batch_size in testing)
       data = getattr(self.dataset[task_name], mode)
       if data.max_rows >= 0:
         batches[task_name] = data.get_batch(
@@ -306,9 +304,11 @@ class ExperimentManager(ManagerBase):
       test_score, _ = task_model.test(batches, mode, self.logger, output_path)
     return m
 
-  def demo(self, utterances):
+  def demo(self, task, *args):
+    sys.stdout = sys.stderr
+
     m = self.create_model(self.config, load_best=True)
-    m.tasks.dialogue_en.demo(utterances)
+    m.tasks[task].demo(*args)
     
   def debug(self):
     task_name = list(self.config.tasks.keys())[0]

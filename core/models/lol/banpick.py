@@ -6,23 +6,21 @@ import tensorflow as tf
 from core.models.lol.base import LoLBase
 from core.utils.tf_utils import shape, linear, make_summary
 from core.utils.common import dbgprint, dotDict, recDotDefaultDict, flatten, flatten_batch, flatten_recdict
-from core.dataset.lol.match import print_example
+from core.dataset.lol.match import print_example, create_test_batch
 
 def evaluate_and_print(examples, results):
   win_estimations = np.argmax(results, axis=-1)
   acc = 0.0
   for i, (e, r) in enumerate(zip(examples, results.tolist())):
     print('<%04d>' % i)
-    print_example(e)
+    print_example(e, r)
     if e.win == win_estimations[i]:
       acc += 1
-    print()
-    print('Winrate Estimation (BLUE, RED):\t', r)
-    print('---------------------------------------')
     print()
   acc /= len(examples)
   print('Accuracy:\t', acc)
   return acc
+
 
 class WinrateEstimater(LoLBase):
   def __init__(self, sess, config, trainer, vocab):
@@ -63,3 +61,16 @@ class WinrateEstimater(LoLBase):
     summary_dict['%s/%s/accuracy' % (self.scopename, mode)] = acc
     summary = make_summary(summary_dict)
     return acc, summary
+
+  def demo(self, roles, picks, bans):
+    batch = create_test_batch(roles, picks, bans, self.vocab)
+
+    input_feed = self.get_input_feed(batch, False)
+
+    output_feed = self.predictions
+    predictions = self.sess.run(output_feed, input_feed)
+
+    for example, prediction in zip(flatten_batch(batch), predictions):
+      print_example(example, prediction=prediction)
+      print('')
+    return batch, predictions

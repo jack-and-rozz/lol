@@ -24,7 +24,7 @@ def reformat_role(role, lane):
   pass
 
 # https://developer.riotgames.com/api-methods/#match-v4
-def create_example(jline, vocab):
+def create_example_from_jline(jline, vocab):
   # assert type(context) == list # The context must be separated into tokens.
   #example = recDotDefaultDict()
   # example.context.raw = context
@@ -59,6 +59,18 @@ def create_example(jline, vocab):
   example.roles.ids = [vocab.role.token2id(x) for x in example.roles.raw]
   return example
 
+def create_example(roles, picks, bans, vocab):
+  example = recDotDefaultDict()
+  example.roles.raw = roles
+  example.roles.ids = [vocab.role.token2id(x) for x in roles]
+
+  example.picks.raw = picks
+  example.picks.ids = [vocab.champion.token2id(x) for x in picks]
+  example.bans.raw = bans
+  example.bans.ids = [vocab.champion.token2id(x) for x in bans]
+  example.win = 0
+  return example
+
 def padding(batch, minlen=None, maxlen=None):
   batch.roles.ids = _padding(
     batch.roles.ids, minlen=[None], maxlen=[None])
@@ -66,15 +78,16 @@ def padding(batch, minlen=None, maxlen=None):
     batch.picks.ids, minlen=[None], maxlen=[None])
   batch.bans.ids = _padding(
     batch.bans.ids, minlen=[None], maxlen=[None])
-  # for k, v in flatten_recdict(batch).items():
-  #   if type(v) == np.ndarray:
-  #     print(k ,v.shape)
   return batch
 
-def create_test_batch(contexts, vocab):
-  raise NotImplementedError
+def create_test_batch(roles, picks, bans, vocab):
+  batch = recDotDefaultDict()
+  example = create_example(roles, picks, bans, vocab)
+  batch = batching_dicts(batch, example) # list of dictionaries to dictionary of lists.
+  batch = padding(batch)
+  return batch
 
-def print_example(example):
+def print_example(example, prediction=None):
   #pprint(example)
   
   def _format(team, role, pick, ban):
@@ -100,7 +113,12 @@ def print_example(example):
   df.columns = header
   df = df.set_index('Team')
   print(df)
-  print('Patch:\t', example.gameVersion)
+  if example.gameVersion:
+    print('Patch:\t', example.gameVersion)
+
+  if prediction is not None:
+    print('Winrate Estimation (BLUE, RED):\t', prediction)
+  print('---------------------------------------')
 
 class _LoLmatchTrainDataset(PartitionedDatasetBase):
   def preprocess(self, line):
@@ -108,7 +126,7 @@ class _LoLmatchTrainDataset(PartitionedDatasetBase):
   
   def filter_example(self, example):
     # Return True if the example is acceptable.
-    if example.queueId != QUEUEID.solo_ranked:
+    if not hasattr(example, 'queueId') or example.queueId != QUEUEID.solo_ranked:
       return False
     return True
 
@@ -120,7 +138,7 @@ class _LoLmatchTrainDataset(PartitionedDatasetBase):
     self.data = self.create_examples(data)
 
   def create_examples(self, data):
-    examples = [create_example(d, self.vocab) for d in data if self.filter_example(d)]
+    examples = [create_example_from_jline(d, self.vocab) for d in data if self.filter_example(d)]
     #examples = [create_example(d, self.vocab) for d in data]
     #examples = [ex for ex in examples if self.filter_example(ex)]
     return examples
