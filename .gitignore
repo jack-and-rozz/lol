@@ -1,6 +1,5 @@
 __pycache__
-embeddings/*
-dataset/*
+datasets/*
 checkpoints/*
 tools/*
 logs/*
