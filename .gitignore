@@ -1,3 +1,4 @@
+__pycache__
 embeddings/*
 dataset/*
 checkpoints/*
@@ -5,7 +6,7 @@ tools/*
 logs/*
 tmp/*
 ref/*
-_bak
+*.bak
 
 tmp*
 tensorflow
