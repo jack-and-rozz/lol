@@ -1,0 +1,1 @@
+https://developer.riotgames.com/docs/lol
